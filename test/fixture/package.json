@@ -1,5 +1,5 @@
 {
-  "name": "@journey-to-code/auto-release-fixture",
+  "name": "@journey-to-code/release-on-bump-fixture",
   "version": "0.0.0",
   "description": "What the action's own CI dry-runs against. Never published.",
   "license": "MIT",
