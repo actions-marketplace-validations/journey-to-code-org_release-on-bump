@@ -1,4 +1,4 @@
-# Journey Auto Release
+# Release on Bump
 
 A GitHub Action that releases npm packages when their version reaches `main`.
 
@@ -37,7 +37,7 @@ jobs:
       id-token: write # trusted publishing, and npm's provenance
     steps:
       - uses: actions/checkout@v4
-      - uses: journey-to-code-org/auto-release-action@v1
+      - uses: journey-to-code-org/release-on-bump@v1
 ```
 
 That is the whole setup for a repository of packages under `packages/*` with `build`, `typecheck` and `test` scripts. Everything is an input; see below.

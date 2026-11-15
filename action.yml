@@ -1,4 +1,4 @@
-name: Journey Auto Release
+name: Release on Bump
 description: Publish npm packages whose version isn't on npm yet (trusted publishing, with provenance), then tag and release each one on GitHub.
 author: Journey to Code
 branding:
