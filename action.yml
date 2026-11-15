@@ -1,5 +1,5 @@
 name: Release on Bump
-description: Publish npm packages whose version isn't on npm yet (trusted publishing, with provenance), then tag and release each one on GitHub.
+description: Publish npm packages whose version isn't on npm yet, then tag and release them on GitHub. Trusted publishing, no token.
 author: Journey to Code
 branding:
   icon: package
