@@ -1,0 +1,12 @@
+{
+  "name": "auto-release-action",
+  "private": true,
+  "description": "Publish npm packages whose version isn't on npm yet, then tag and release them on GitHub.",
+  "type": "module",
+  "license": "MIT",
+  "repository": "github:journey-to-code-org/auto-release-action",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test test/release.test.mjs"
+  }
+}

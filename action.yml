@@ -1,0 +1,142 @@
+name: Journey Auto Release
+description: Publish npm packages whose version isn't on npm yet (trusted publishing, with provenance), then tag and release each one on GitHub.
+author: Journey to Code
+branding:
+  icon: package
+  color: purple
+
+inputs:
+  working-directory:
+    description: The repository root for the package(s), if it isn't the checkout's root.
+    default: "."
+  packages:
+    description: >-
+      Which packages to publish: `auto` reads the root package.json's `workspaces` (or publishes the
+      root package, if there are none). Otherwise a comma or newline separated list of directories or
+      `dir/*` patterns.
+    default: auto
+  branch:
+    description: The only branch that may publish. A run from any other branch fails before publishing anything.
+    default: main
+  tag-format:
+    description: >-
+      The git tag and release name for each package, with `{dir}`, `{name}` (the package name without
+      its scope) and `{version}`. Defaults to `v{version}` for a single package and `{dir}-v{version}`
+      for a monorepo.
+    default: ""
+  node-version:
+    description: Node.js version. Ignored when `node-version-file` is set.
+    default: "22"
+  node-version-file:
+    description: A file with the Node.js version (`.nvmrc`, `.node-version`), used instead of `node-version`.
+    default: ""
+  npm-version:
+    description: The npm to install first. Trusted publishing needs 11.5.1 or later. Empty keeps the one that comes with Node.
+    default: "11"
+  cache:
+    description: The package manager setup-node caches for (`npm`), or empty for none.
+    default: npm
+  install:
+    description: How to install dependencies. Empty to skip.
+    default: npm ci
+  verify:
+    description: >-
+      Commands to run before anything is published, one per line, stopping at the first failure. A
+      broken main publishes nothing. Empty to skip.
+    default: |
+      npm run build --if-present
+      npm run typecheck --if-present
+      npm test --if-present
+  access:
+    description: "`public` or `restricted`: whether scoped packages are public."
+    default: public
+  provenance:
+    description: Publish with npm provenance, which needs the job to have the id-token write permission.
+    default: "true"
+  npm-token:
+    description: An npm token, only if trusted publishing isn't set up (it replaces the OIDC login). Leave empty otherwise.
+    default: ""
+  github-token:
+    description: >-
+      The token that makes the tags and releases. The workflow's own is enough, unless the commit
+      being released changes `.github/workflows` (then a token with Workflows permission).
+    default: ${{ github.token }}
+  dry-run:
+    description: Do everything but publish and release (`npm publish --dry-run`).
+    default: "false"
+
+outputs:
+  published:
+    description: The packages published by this run, one `<dir> <version>` per line.
+    value: ${{ steps.release.outputs.published }}
+  released:
+    description: The packages on npm at the version in the repository, one `<dir> <version>` per line.
+    value: ${{ steps.release.outputs.released }}
+  tags:
+    description: The tags and GitHub releases created by this run, one per line.
+    value: ${{ steps.release.outputs.tags }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      if: inputs.node-version-file == ''
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: ${{ inputs.cache }}
+        cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+    - uses: actions/setup-node@v4
+      if: inputs.node-version-file != ''
+      with:
+        node-version-file: ${{ inputs.node-version-file }}
+        cache: ${{ inputs.cache }}
+        cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+    # The release reads the history to find the commit that set each version.
+    - name: Fetch the whole history
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+          git fetch --quiet --unshallow
+        fi
+    - name: Install npm
+      if: inputs.npm-version != ''
+      shell: bash
+      env:
+        NPM_VERSION: ${{ inputs.npm-version }}
+      run: npm install -g "npm@$NPM_VERSION"
+    - name: Install dependencies
+      if: inputs.install != ''
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        COMMAND: ${{ inputs.install }}
+      run: bash -eo pipefail -c "$COMMAND"
+    - name: Build and test
+      if: inputs.verify != ''
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        COMMAND: ${{ inputs.verify }}
+      run: bash -eo pipefail -c "$COMMAND"
+    # Only with a token: setup-node's own registry-url would set NODE_AUTH_TOKEN, which overrides trusted publishing.
+    - name: Use the npm token
+      if: inputs.npm-token != ''
+      shell: bash
+      env:
+        NPM_TOKEN: ${{ inputs.npm-token }}
+      run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > "$HOME/.npmrc"
+    - name: Publish to npm, then tag and release
+      id: release
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        GH_REPO: ${{ github.repository }}
+        RELEASE_ROOT: ${{ inputs.working-directory }}
+        RELEASE_PACKAGES: ${{ inputs.packages }}
+        RELEASE_BRANCH: ${{ inputs.branch }}
+        RELEASE_TAG_FORMAT: ${{ inputs.tag-format }}
+        RELEASE_ACCESS: ${{ inputs.access }}
+        RELEASE_PROVENANCE: ${{ inputs.provenance }}
+        RELEASE_DRY_RUN: ${{ inputs.dry-run }}
+      run: node "$GITHUB_ACTION_PATH/scripts/release.mjs"

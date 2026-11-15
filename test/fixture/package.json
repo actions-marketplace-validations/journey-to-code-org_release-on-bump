@@ -1,0 +1,7 @@
+{
+  "name": "@journey-to-code/auto-release-fixture",
+  "version": "0.0.0",
+  "description": "What the action's own CI dry-runs against. Never published.",
+  "license": "MIT",
+  "files": ["index.js"]
+}

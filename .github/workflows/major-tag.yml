@@ -1,0 +1,31 @@
+# Moves the major tag (v1) to a release when it is published, so `@v1` is always the latest 1.x.y.
+name: Move the major tag
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    # A prerelease is never what `@v1` points at.
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - name: Move the tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          case "$TAG" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "$TAG isn't a version tag: nothing to move."; exit 0 ;;
+          esac
+          major="${TAG%%.*}"
+          git tag -f "$major"
+          git push --force origin "refs/tags/$major"
+          echo "$major now points at $TAG."
