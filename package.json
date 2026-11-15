@@ -1,5 +1,5 @@
 {
-  "name": "auto-release-action",
+  "name": "release-on-bump",
   "private": true,
   "description": "Publish npm packages whose version isn't on npm yet, then tag and release them on GitHub.",
   "type": "module",
